@@ -1,34 +1,37 @@
 const express = require('express');
-
-
-const app = express();
 const redis = require('redis');
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost'
 
-const client = redis.createClient({ url: REDIS_URL });
+const PORT = process.env.PORT || 3001;
+const REDIS_URL = process.env.REDIS_URL || 'redis://localhost';
+
+const app = express();
+
+const client = redis.createClient({url: REDIS_URL});
 (async () => {
   await client.connect();
-})()
+})();
 
 const counter = {};
 
-app.get('/counter/:bookId', (req, res) => {
-  const { bookId } = req.params;
-  res.json(counter[bookId] ? counter[bookId] : 0);
+app.get('/counter/:bookId', async (req, res) => {
+  console.log('get');
+  const {bookId} = req.params;
+  const value = await client.get(bookId);
+  await res.json(value ? value : 0);
 });
 
 app.post('/counter/:bookId/incr', async (req, res) => {
-  const { bookId } = req.params;
-  // counter[bookId] ? counter[bookId] += 1 : counter[bookId] = 1;
+  console.log('post');
+  const {bookId} = req.params;
   try {
-    // const cnt = await client.incr(bookId);
-    const cnt = await client.set(`${bookId}`,``)
-    res.json(`Счетчик ${bookId} увеличен на 1, значение ${cnt}`);
+    const coun = await client.incr(bookId);
+    await res.json(`Счетчик ${bookId} увеличен на 1, значение ${coun}`);
   } catch (e) {
-    res.json("Err")
+    await res.json("Err")
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT);
+app.listen(PORT,()=>{
+  console.log(`port:${PORT}`);
+});
